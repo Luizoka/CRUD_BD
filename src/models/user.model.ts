@@ -78,7 +78,51 @@ export class User extends Entity {
   })
   occupation?: string;
 
-  // Adicionar a propriedade age
+  @property({
+    type: 'string',
+    jsonSchema: {nullable: true},
+    length: 100,
+    generated: false,
+    mysql: {columnName: 'marital_status', dataType: 'varchar', dataLength: 100, dataPrecision: null, dataScale: null, nullable: 'Y', generated: false},
+  })
+  maritalStatus?: string;
+
+  @property({
+    type: 'string',
+    jsonSchema: {nullable: true},
+    length: 100,
+    generated: false,
+    mysql: {columnName: 'email', dataType: 'varchar', dataLength: 100, dataPrecision: null, dataScale: null, nullable: 'Y', generated: false},
+  })
+  email?: string;
+
+  @property({
+    type: 'string',
+    jsonSchema: {nullable: true},
+    length: 100,
+    generated: false,
+    mysql: {columnName: 'password', dataType: 'varchar', dataLength: 100, dataPrecision: null, dataScale: null, nullable: 'Y', generated: false},
+  })
+  password?: string;
+
+  @property({
+    type: 'string',
+    jsonSchema: {nullable: true},
+    length: 100,
+    generated: false,
+    mysql: {columnName: 'diagnosis', dataType: 'varchar', dataLength: 100, dataPrecision: null, dataScale: null, nullable: 'Y', generated: false},
+  })
+  diagnosis?: string;
+
+  @property({
+    type: 'string',
+    jsonSchema: {nullable: true},
+    length: 100,
+    generated: false,
+    mysql: {columnName: 'profile', dataType: 'varchar', dataLength: 100, dataPrecision: null, dataScale: null, nullable: 'Y', generated: false},
+  })
+  profile?: string;
+
   // Adicionar a propriedade age
   @property({
     type: 'number',

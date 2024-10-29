@@ -16,6 +16,7 @@ import {
   del,
   requestBody,
   response,
+  HttpErrors,
 } from '@loopback/rest';
 import {User} from '../models';
 import {UserRepository} from '../repositories';
@@ -171,5 +172,48 @@ export class UserController {
   })
   async deleteById(@param.path.number('id') id: number): Promise<void> {
     await this.userRepository.deleteById(id);
+  }
+
+  @post('/user/login', {
+    responses: {
+      '200': {
+        description: 'Login Response',
+        content: {'application/json': {schema: {'x-ts-type': User}}},
+      },
+      '401': {
+        description: 'Unauthorized',
+      },
+    },
+  })
+  async login(
+    @requestBody({
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            required: ['email', 'password'],
+            properties: {
+              email: {type: 'string'},
+              password: {type: 'string'},
+            },
+          },
+        },
+      },
+    })
+    credentials: {email: string; password: string},
+  ): Promise<User> {
+    // Verifica se existe o usuário com o email e senha fornecidos, sem selecionar o campo virtual 'age'
+    const foundUser = await this.userRepository.findOne({
+      where: {email: credentials.email, password: credentials.password},
+      fields: {age: false}, // Exclui 'age' para evitar o erro no banco de dados
+    });
+
+    // Retorna erro se o usuário não for encontrado ou a senha estiver incorreta
+    if (!foundUser) {
+      throw new HttpErrors.Unauthorized('Email ou senha incorretos');
+    }
+
+    // Retorna o usuário se a autenticação for bem-sucedida
+    return foundUser;
   }
 }
