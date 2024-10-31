@@ -7,26 +7,66 @@ import {
   Where,
 } from '@loopback/repository';
 import {
-  post,
-  param,
+  del,
   get,
   getModelSchemaRef,
+  HttpErrors,
+  param,
   patch,
+  post,
   put,
-  del,
   requestBody,
   response,
-  HttpErrors,
 } from '@loopback/rest';
+import * as bcrypt from 'bcryptjs';
+import {formatISO} from 'date-fns';
+//import * as jwt from 'jsonwebtoken';
 import {User} from '../models';
 import {UserRepository} from '../repositories';
-import {formatISO} from 'date-fns';
 
 export class UserController {
   constructor(
     @repository(UserRepository)
     public userRepository : UserRepository,
   ) {}
+
+  @post('/users/crypto')
+  @response(200, {
+    description: 'User model instance',
+    content: {'application/json': {schema: getModelSchemaRef(User)}},
+  })
+  async createWithCrypto(
+    @requestBody({
+      content: {
+        'application/json': {
+          schema: getModelSchemaRef(User, {
+            title: 'NewUser',
+            exclude: ['id', 'age'], // Exclua 'age' aqui
+          }),
+        },
+      },
+    })
+    user: Omit<User, 'id'>,
+  ): Promise<Omit<User, 'password'>> {
+    // 1. Formatação do campo de nascimento, se fornecido
+    if (user.birthdate) {
+      user.birthdate = formatISO(new Date(user.birthdate));
+    }
+
+    // 2. Hash da senha antes de salvar no banco
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(user.password, saltRounds);
+    user.password = hashedPassword;
+
+    // 3. Criação do usuário com senha criptografada
+    const createdUser = await this.userRepository.create(user);
+
+    // 4. Exclui a senha do retorno usando "Type Assertion"
+    const userWithoutPassword = createdUser.toObject() as Omit<User, 'password'>;
+
+    // Retorna o usuário sem a senha
+    return userWithoutPassword;
+  }
 
   @post('/users')
   @response(200, {
@@ -49,8 +89,7 @@ export class UserController {
     if (user.birthdate) {
       user.birthdate = formatISO(new Date(user.birthdate));
     }
-    const createdUser = await this.userRepository.create(user);
-    return createdUser;
+    return this.userRepository.create(user);
   }
 
   @get('/users/count')
@@ -127,7 +166,7 @@ export class UserController {
       const fields = {...filter.fields}; // Cria uma cópia mutável do objeto fields
       delete fields.age;
       filter.fields = fields;
-    }
+    } // else pra usar sem filtro
     return this.userRepository.findById(id, filter);
   }
 
@@ -202,18 +241,65 @@ export class UserController {
     })
     credentials: {email: string; password: string},
   ): Promise<User> {
-    // Verifica se existe o usuário com o email e senha fornecidos, sem selecionar o campo virtual 'age'
     const foundUser = await this.userRepository.findOne({
       where: {email: credentials.email, password: credentials.password},
       fields: {age: false}, // Exclui 'age' para evitar o erro no banco de dados
     });
 
-    // Retorna erro se o usuário não for encontrado ou a senha estiver incorreta
     if (!foundUser) {
       throw new HttpErrors.Unauthorized('Email ou senha incorretos');
     }
 
-    // Retorna o usuário se a autenticação for bem-sucedida
+    return foundUser;
+  }
+
+  @post('/user/login/crypto', {
+    responses: {
+      '200': {
+        description: 'Login Response',
+        content: {'application/json': {schema: {'x-ts-type': User}}},
+      },
+      '401': {
+        description: 'Unauthorized',
+      },
+    },
+  })
+  async loginWithCrypto(
+    @requestBody({
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            required: ['email', 'password'],
+            properties: {
+              email: {type: 'string'},
+              password: {type: 'string'},
+            },
+          },
+        },
+      },
+    })
+    credentials: {email: string; password: string},
+  ): Promise<User> {
+    // Verifica se existe o usuário com o email fornecido
+    const foundUser = await this.userRepository.findOne({
+      where: {email: credentials.email},
+      fields: {age: false},
+    });
+
+    // Retorna erro se o usuário não for encontrado
+    if (!foundUser || !foundUser.password) {
+      throw new HttpErrors.Unauthorized('Email ou senha incorretos');
+    }
+
+    // Compara a senha fornecida com a senha armazenada no banco de dados
+    const passwordMatch = await bcrypt.compare(credentials.password, foundUser.password);
+
+    // Retorna erro se a senha estiver incorreta
+    if (!passwordMatch) {
+      throw new HttpErrors.Unauthorized('Email ou senha incorretos');
+    }
+
     return foundUser;
   }
 }

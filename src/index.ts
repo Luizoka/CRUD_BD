@@ -1,4 +1,8 @@
-import {ApplicationConfig, CrudBdApplication} from './application';
+import { ApplicationConfig, CrudBdApplication } from './application';
+import dotenv from 'dotenv'; // Certifique-se de usar a importação correta do dotenv
+
+// Carregando as variáveis de ambiente
+dotenv.config();
 
 export * from './application';
 
@@ -19,15 +23,10 @@ if (require.main === module) {
   const config = {
     rest: {
       port: +(process.env.PORT ?? 3000),
-      host: process.env.HOST || '127.0.0.1',
-      // The `gracePeriodForClose` provides a graceful close for http/https
-      // servers with keep-alive clients. The default value is `Infinity`
-      // (don't force-close). If you want to immediately destroy all sockets
-      // upon stop, set its value to `0`.
-      // See https://www.npmjs.com/package/stoppable
-      gracePeriodForClose: 5000, // 5 seconds
+      host: process.env.HOST ?? '127.0.0.1',
+      // O `gracePeriodForClose` fornece um fechamento suave para http/https
+      gracePeriodForClose: 5000, // 5 segundos
       openApiSpec: {
-        // useful when used with OpenAPI-to-GraphQL to locate your application
         setServersFromRequest: true,
       },
     },
